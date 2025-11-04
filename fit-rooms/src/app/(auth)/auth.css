@@ -1,0 +1,15 @@
+.auth-container {
+  @apply mx-auto flex w-full max-w-md flex-col gap-6 rounded-xl border border-black/10 bg-white p-8 shadow-lg;
+}
+
+.auth-title {
+  @apply text-2xl font-semibold;
+}
+
+.auth-description {
+  @apply text-sm text-black/60;
+}
+
+.auth-footer {
+  @apply text-sm text-black/60;
+}
