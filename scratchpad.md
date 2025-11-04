@@ -264,14 +264,16 @@ table leaderboards (
 
 ## 项目状态看板（执行者维护）
 
-### 当前阶段：阶段七 - 计分统计
-**目标**：按用户本地时区在 23:59 切分并沉淀每日打卡结果，为计分与排行打基础
+### 当前阶段：阶段八 - 排行榜
+**目标**：按每日 UTC+8 12:00 生成房间排行榜快照（leaderboards），提供查询 API 与前端展示，并配置可靠调度与回滚方案
 
 ### TODO（按优先级排序）
 - （空）
 
 ### DOING
 - **8.1** 排行榜生成：UTC+8 12:00 刷新快照落表（leaderboards）
+- **8.4** 调度顺序校准：`settle_daily_stats (*/15)` → `settle_team_scores (04:10)` → `build_leaderboard_snapshot (建议 04:20)`；文档记录表达式与回滚
+- **8.5** 可观测与回退文档：curl 回放脚本（dryRun/实写）、常见失败原因与排查指引、告警建议
 
 ### DONE
 - 项目需求分析和任务拆分完成
@@ -298,24 +300,31 @@ table leaderboards (
 - **7.2** 计分逻辑：Edge Function `settle_team_scores` + README + dry-run/写入接口，构建与 Lint 通过
 - **7.3** 定时任务（经外部 GitHub Actions 完成）：`settle_daily_stats` 与 `settle_team_scores` 定时调度
 - **7.4** 统计页面：`/api/stats` + `/stats` UI（个人/小队/榜单）、导航入口、文档与工作流更新
+- **8.2** Leaderboard API 强化：入参校验（缺失/非法日期）、错误语义（400/403/404/500）、默认日期说明（UTC+8 前一自然日）、短期缓存头
+- **8.3** 前端页面：`/rooms/[id]/leaderboard`（或房间内页签），支持日期选择、我的队伍高亮、空态/加载/错误态
 
 ### 规划者指令
-- **下一步行动**：启动阶段八任务 8.1 - 排行榜生成（UTC+8 12:00 刷新）
+- **下一步行动**：推进阶段八后续任务 8.2、8.3、8.4、8.5（不造数，完成功能与联通）
 **具体要求**：
-1. 数据管道：基于 `daily_stats`、`team_scores` 汇总并写入 `leaderboards` 快照
-   - 支持指定日期（默认前一自然日）
-   - 记录排名数组（队伍 ID、队名、积分、可选近 7 天增量）
-   - 幂等：同房间+日期重复运行不产生多余记录
-2. 调度：新增 Edge Function（如 `build_leaderboard_snapshot`）并配置 GitHub Actions/Scheduled Trigger，每日 UTC 04:00 调用
-3. API：暴露 `/api/leaderboards?roomId&date=` 查询接口（默认前一日），返回快照数据
-4. 文档：更新运维文档与 README，记录调度表达式、dry-run、回滚方案
+1. 8.2 Leaderboard API 强化
+   - 校验 `roomId` 与 `date`（YYYY-MM-DD），默认日期=UTC+8 前一自然日
+   - 错误语义：非法/缺失日期→400，非房间成员→403，无快照→404，其他→500
+   - 响应添加短期缓存头（如 `Cache-Control: s-maxage=60`）
+2. 8.3 前端页面骨架
+   - 新增 `/rooms/[id]/leaderboard` 页面（或房间详情页签）
+   - 展示：名次、队名、成员数、总积分、近 7 天、最近得分日；我的队伍高亮
+   - 交互：日期选择器（默认 UTC+8 前一日），空态/加载/错误态完整，移动端适配
+3. 8.4 调度顺序校准
+   - GitHub Actions：`settle_team_scores` 维持 04:10；`build_leaderboard_snapshot` 调整为 04:20
+   - `docs/ops-scheduling.md` 更新表达式、依赖顺序与回滚/重放示例
+4. 8.5 可观测与回退
+   - 文档补充 curl 脚本（dryRun/实写）、常见失败场景及排查步骤、失败告警建议
 
 **成功标准**：
-- 指定日期的排行榜快照可正确写入并查询
-- 调度任务自动化，失败可重放；`pnpm lint && pnpm build` 通过
-- 文档覆盖运行说明，团队成员可自助排查
+- `/api/leaderboards` 入参/权限/404 语义清晰；`pnpm lint && pnpm build` 通过
+- `/rooms/[id]/leaderboard` 页面可加载快照、切换日期并正确展示空态/加载/错误态
+- 三个调度任务按顺序可靠触发，日志清晰；有回滚/重放说明
 
-**验证建议**：
-- 手动造数（多队伍、不同积分）对比快照排名是否正确
-- 临时缩短 cron 验证幂等执行
-- 通过 `/api/leaderboards` 或 Supabase SQL 手动抽查快照内容
+**验证建议**（统一联调时再执行）：
+- 先运行 `settle_daily_stats` 与 `settle_team_scores`（指定同一天），再运行 `build_leaderboard_snapshot` 生成快照
+- 通过 `/api/leaderboards?roomId&date` 与页面查看结果；重复运行验证幂等
