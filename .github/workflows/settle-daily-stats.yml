@@ -1,1 +1,30 @@
+name: Settle Daily Stats (Cron)
 
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: settle-daily-stats
+  cancel-in-progress: false
+
+jobs:
+  invoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Call settle_daily_stats
+        env:
+          SUPABASE_FUNCTIONS_URL: ${{ secrets.SUPABASE_FUNCTIONS_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          if [ -z "$SUPABASE_FUNCTIONS_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "Missing required secrets" >&2
+            exit 1
+          fi
+          curl -X GET "$SUPABASE_FUNCTIONS_URL/settle_daily_stats" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "User-Agent: GitHubActionsCron" \
+            --fail-with-body \
+            --max-time 30

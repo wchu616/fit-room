@@ -268,8 +268,7 @@ table leaderboards (
 **目标**：按用户本地时区在 23:59 切分并沉淀每日打卡结果，为计分与排行打基础
 
 ### TODO（按优先级排序）
-- **7.3** 定时任务：调度每日结算与记分（Edge Functions Scheduled Triggers）
-- **7.4** 统计页面：个人/队伍统计、历史数据
+- **8.1** 排行榜生成：UTC+8 12:00 刷新快照落表（leaderboards）
 
 ### DOING
 - （空）
@@ -297,25 +296,26 @@ table leaderboards (
 - **6.4** 计划页面交互完善：创建/编辑表单对接 API、10:00 锁定联动 override、删除覆盖、override 历史展开；构建与 Lint 通过
 - **7.1** 每日统计（本地 23:59 切分）：Edge Function `settle_daily_stats` + README + dry-run/写入接口，构建与 Lint 通过
 - **7.2** 计分逻辑：Edge Function `settle_team_scores` + README + dry-run/写入接口，构建与 Lint 通过
+- **7.3** 定时任务（经外部 GitHub Actions 完成）：`settle_daily_stats` 与 `settle_team_scores` 定时调度
+- **7.4** 统计页面：`/api/stats` + `/stats` UI（个人/小队/榜单）、导航入口、文档与工作流更新
 
 ### 规划者指令
--**下一步行动**：执行阶段七的任务 7.3 - 定时任务（调度每日结算与记分）
+- **下一步行动**：启动阶段八任务 8.1 - 排行榜生成（UTC+8 12:00 刷新）
 **具体要求**：
-1. 为 `settle_daily_stats` 配置计划调度：建议每 15 分钟触发一次（Cron：`*/15 * * * *`）
-   - 函数内部已按各用户时区判断 23:59 窗口，仅在到达窗口时写入（重复安全）
-2. 为 `settle_team_scores` 配置计划调度：建议在每日 UTC 04:10 触发（Cron：`10 4 * * *`）
-   - 避免与上一步窗口冲突；可适当错开 5–10 分钟
-3. 部署与环境：使用 `supabase functions deploy` 部署两个函数；在 Supabase Dashboard 配置 Scheduled Triggers（或使用平台提供的调度配置）
-4. 观测与回滚：
-   - 为两函数开启日志观测；出现异常时支持 `dryRun` 重放和人工修正
-   - README 中记录调度表达式、变更记录与回滚方案
+1. 数据管道：基于 `daily_stats`、`team_scores` 汇总并写入 `leaderboards` 快照
+   - 支持指定日期（默认前一自然日）
+   - 记录排名数组（队伍 ID、队名、积分、可选近 7 天增量）
+   - 幂等：同房间+日期重复运行不产生多余记录
+2. 调度：新增 Edge Function（如 `build_leaderboard_snapshot`）并配置 GitHub Actions/Scheduled Trigger，每日 UTC 04:00 调用
+3. API：暴露 `/api/leaderboards?roomId&date=` 查询接口（默认前一日），返回快照数据
+4. 文档：更新运维文档与 README，记录调度表达式、dry-run、回滚方案
 
 **成功标准**：
-- 两个函数按设定时间可靠触发；日志可见成功执行，失败有错误记录
-- 重复触发不产生重复数据（幂等校验生效）
-- 文档（README 或 `docs/ops.md`）清晰记录调度策略与 SLO/回退
+- 指定日期的排行榜快照可正确写入并查询
+- 调度任务自动化，失败可重放；`pnpm lint && pnpm build` 通过
+- 文档覆盖运行说明，团队成员可自助排查
 
-**手动检查**：
-- 在 Dashboard 手动触发（或临时改为每分钟）观察 dry-run 与实写入效果
-- 人为造数：准备 2 个时区的用户与队伍，验证 stats 与 scores 在下一次触发后正确落库
-- 调整 Cron 到 1 分钟间隔，观察连续多次触发不重复记分/写入
+**验证建议**：
+- 手动造数（多队伍、不同积分）对比快照排名是否正确
+- 临时缩短 cron 验证幂等执行
+- 通过 `/api/leaderboards` 或 Supabase SQL 手动抽查快照内容
