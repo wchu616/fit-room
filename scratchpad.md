@@ -268,10 +268,10 @@ table leaderboards (
 **目标**：按每日 UTC+8 12:00 生成房间排行榜快照（leaderboards），提供查询 API 与前端展示，并配置可靠调度与回滚方案
 
 ### TODO（按优先级排序）
-- （空）
+- Vercel 部署：`pnpm build` 失败（缺少依赖）复验
 
 ### DOING
-- **8.1** 排行榜生成：UTC+8 12:00 刷新快照落表（leaderboards）
+- **8.1** 排行榜生成：UTC+8 12:00 刷新快照落表（leaderboards） — 待线上数据验证
 - **8.4** 调度顺序校准：`settle_daily_stats (*/15)` → `settle_team_scores (04:10)` → `build_leaderboard_snapshot (建议 04:20)`；文档记录表达式与回滚
 - **8.5** 可观测与回退文档：curl 回放脚本（dryRun/实写）、常见失败原因与排查指引、告警建议
 
