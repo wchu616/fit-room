@@ -1,0 +1,32 @@
+name: Build Leaderboard Snapshot (Cron)
+
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: build-leaderboard-snapshot
+  cancel-in-progress: false
+
+jobs:
+  invoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Call build_leaderboard_snapshot
+        env:
+          SUPABASE_FUNCTIONS_URL: ${{ secrets.SUPABASE_FUNCTIONS_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          if [ -z "$SUPABASE_FUNCTIONS_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "Missing required secrets" >&2
+            exit 1
+          fi
+          curl -X POST "$SUPABASE_FUNCTIONS_URL/build_leaderboard_snapshot" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            -H "User-Agent: GitHubActionsCron" \
+            --data '{"dryRun":false}' \
+            --fail-with-body \
+            --max-time 30
