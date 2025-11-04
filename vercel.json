@@ -1,5 +1,4 @@
 {
-  "framework": "nextjs",
   "installCommand": "cd fit-rooms && pnpm install",
   "buildCommand": "cd fit-rooms && pnpm build",
   "devCommand": "cd fit-rooms && pnpm dev",
