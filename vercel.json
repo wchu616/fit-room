@@ -1,6 +1,6 @@
 {
-  "installCommand": "cd fit-rooms && corepack enable && corepack prepare pnpm@10.20.0 --activate && pnpm install",
-  "buildCommand": "cd fit-rooms && pnpm build",
-  "devCommand": "cd fit-rooms && pnpm dev",
-  "outputDirectory": "fit-rooms/.next"
+  "installCommand": "corepack enable && corepack prepare pnpm@10.20.0 --activate && pnpm install",
+  "buildCommand": "pnpm build",
+  "devCommand": "pnpm dev",
+  "outputDirectory": ".next"
 }
