@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
-import { useCallback, useState } from "react";
 
 const links = [
   { href: "/", label: "概览" },
@@ -19,6 +19,37 @@ export function NavBar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [logoutPending, setLogoutPending] = useState(false);
+  const [sessionLoading, setSessionLoading] = useState(true);
+  const [hasSession, setHasSession] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadSession() {
+      try {
+        const response = await fetch("/api/auth/session", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("failed to fetch session");
+        }
+        const data = await response.json();
+        if (!cancelled) {
+          setHasSession(Boolean(data?.user));
+        }
+      } catch (error) {
+        console.error("session check failed", error);
+        if (!cancelled) {
+          setHasSession(false);
+        }
+      } finally {
+        if (!cancelled) {
+          setSessionLoading(false);
+        }
+      }
+    }
+    loadSession();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleLogout = useCallback(async () => {
     if (logoutPending) return;
@@ -61,14 +92,25 @@ export function NavBar() {
               </Link>
             );
           })}
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleLogout}
-            disabled={logoutPending}
-          >
-            {logoutPending ? "正在退出..." : "退出登录"}
-          </Button>
+          {hasSession ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleLogout}
+              disabled={logoutPending}
+            >
+              {logoutPending ? "正在退出..." : "退出登录"}
+            </Button>
+          ) : (
+            <Button
+              variant="secondary"
+              size="sm"
+              asChild
+              disabled={sessionLoading}
+            >
+              <Link href="/login">去登录</Link>
+            </Button>
+          )}
         </div>
 
         <Button
@@ -102,18 +144,31 @@ export function NavBar() {
                 </Link>
               );
             })}
-            <Button
-              variant="secondary"
-              size="sm"
-              fullWidth
-              onClick={() => {
-                setMobileOpen(false);
-                handleLogout();
-              }}
-              disabled={logoutPending}
-            >
-              {logoutPending ? "正在退出..." : "退出登录"}
-            </Button>
+            {hasSession ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                fullWidth
+                onClick={() => {
+                  setMobileOpen(false);
+                  handleLogout();
+                }}
+                disabled={logoutPending}
+              >
+                {logoutPending ? "正在退出..." : "退出登录"}
+              </Button>
+            ) : (
+              <Button
+                variant="secondary"
+                size="sm"
+                fullWidth
+                asChild
+                disabled={sessionLoading}
+                onClick={() => setMobileOpen(false)}
+              >
+                <Link href="/login">去登录</Link>
+              </Button>
+            )}
           </div>
         </div>
       ) : null}
