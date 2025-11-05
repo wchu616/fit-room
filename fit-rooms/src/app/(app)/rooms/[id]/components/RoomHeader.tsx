@@ -1,7 +1,7 @@
 'use client';
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import type { RoomRow } from "@/lib/rooms";
@@ -27,13 +27,6 @@ type RoomHeaderProps = {
 
 export function RoomHeader({ room }: RoomHeaderProps) {
   const [copied, setCopied] = useState(false);
-  const [copiedLink, setCopiedLink] = useState(false);
-
-  const inviteLink = useMemo(() => {
-    if (typeof window === "undefined") return "";
-    const origin = window.location.origin;
-    return `${origin}/rooms?code=${room.code}`;
-  }, [room.code]);
 
   async function handleCopy(text: string, setState: (next: boolean) => void) {
     try {
@@ -62,12 +55,6 @@ export function RoomHeader({ room }: RoomHeaderProps) {
             onClick={() => handleCopy(room.code, setCopied)}
           >
             {copied ? "已复制房间码" : "复制房间码"}
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => handleCopy(inviteLink, setCopiedLink)}
-          >
-            {copiedLink ? "已复制邀请链接" : "复制邀请链接"}
           </Button>
           <Button size="sm" asChild>
             <Link href={`/rooms/${room.id}/leaderboard`}>查看排行榜</Link>
