@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 const links = [
   { href: "/", label: "概览" },
@@ -18,6 +18,23 @@ const links = [
 export function NavBar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [logoutPending, setLogoutPending] = useState(false);
+
+  const handleLogout = useCallback(async () => {
+    if (logoutPending) return;
+    setLogoutPending(true);
+    try {
+      const response = await fetch("/api/auth/logout", { method: "POST" });
+      if (!response.ok) {
+        throw new Error("退出登录失败");
+      }
+    } catch (error) {
+      console.error("logout failed", error);
+    } finally {
+      setLogoutPending(false);
+      window.location.href = "/login";
+    }
+  }, [logoutPending]);
 
   return (
     <header className="border-b border-black/5 bg-white/80 backdrop-blur">
@@ -44,6 +61,14 @@ export function NavBar() {
               </Link>
             );
           })}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleLogout}
+            disabled={logoutPending}
+          >
+            {logoutPending ? "正在退出..." : "退出登录"}
+          </Button>
         </div>
 
         <Button
@@ -60,7 +85,7 @@ export function NavBar() {
 
       {mobileOpen ? (
         <div id="mobile-menu" className="border-t border-black/5 md:hidden">
-          <div className="space-y-1 px-6 py-2">
+          <div className="space-y-2 px-6 py-3">
             {links.map((link) => {
               const isActive = pathname === link.href;
               return (
@@ -77,6 +102,18 @@ export function NavBar() {
                 </Link>
               );
             })}
+            <Button
+              variant="secondary"
+              size="sm"
+              fullWidth
+              onClick={() => {
+                setMobileOpen(false);
+                handleLogout();
+              }}
+              disabled={logoutPending}
+            >
+              {logoutPending ? "正在退出..." : "退出登录"}
+            </Button>
           </div>
         </div>
       ) : null}
