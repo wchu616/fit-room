@@ -273,7 +273,6 @@ export async function getRoomWithMembers({ roomId, userId }: { roomId: string; u
     .select(
       `
       id,
-      created_at,
       room_id,
       user_id,
       joined_at,
@@ -292,7 +291,6 @@ export async function getRoomWithMembers({ roomId, userId }: { roomId: string; u
     const user = Array.isArray(member.users) ? member.users[0] ?? null : member.users;
     return {
       id: member.id,
-      created_at: member.created_at,
       room_id: member.room_id,
       user_id: member.user_id,
       joined_at: member.joined_at,
