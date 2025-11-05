@@ -7,12 +7,11 @@ import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 
 const links = [
-  { href: "/", label: "概览" },
   { href: "/rooms", label: "房间" },
+  { href: "/team", label: "小队" },
   { href: "/plans", label: "计划" },
   { href: "/checkin", label: "打卡" },
-  { href: "/team", label: "小队" },
-  { href: "/stats", label: "统计" },
+  { href: "/stats", label: "排名" },
 ];
 
 export function NavBar() {

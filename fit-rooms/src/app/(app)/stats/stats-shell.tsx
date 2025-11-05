@@ -92,8 +92,8 @@ export function StatsShell({ rooms, initialRoomId, initialStats }: StatsShellPro
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">统计面板</h1>
-          <p className="text-sm text-black/60">查看个人与小队的打卡表现，掌握积分走势与历史记录。</p>
+          <h1 className="text-2xl font-bold">排名面板</h1>
+          <p className="text-sm text-black/60">查看房间积分排名，并了解个人与小队的打卡表现。</p>
         </div>
         {hasRooms ? (
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
@@ -132,6 +132,50 @@ export function StatsShell({ rooms, initialRoomId, initialStats }: StatsShellPro
 
       {stats ? (
         <>
+          <Card padded>
+            <CardHeader>
+              <CardTitle>小队排行榜</CardTitle>
+              <CardDescription>按累计积分排序，便于观察整体竞争情况。</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {stats.scoreboard.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs uppercase tracking-wide text-black/50">
+                        <th className="py-2 pr-4">排名</th>
+                        <th className="py-2 pr-4">小队</th>
+                        <th className="py-2 pr-4">成员</th>
+                        <th className="py-2 pr-4">总积分</th>
+                        <th className="py-2 pr-4">近 7 天</th>
+                        <th className="py-2 pr-4">最近得分日</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stats.scoreboard.map((entry, index) => (
+                        <tr key={entry.teamId} className="border-t border-black/5 text-black/70">
+                          <td className="py-2 pr-4 font-medium text-black">#{index + 1}</td>
+                          <td className="py-2 pr-4">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-black/80">{entry.teamName}</span>
+                              {entry.isUserTeam ? <Badge variant="success">我的队伍</Badge> : null}
+                            </div>
+                          </td>
+                          <td className="py-2 pr-4">{entry.memberCount} 人</td>
+                          <td className="py-2 pr-4 font-semibold text-black">{entry.totalPoints}</td>
+                          <td className="py-2 pr-4">{entry.pointsLast7Days}</td>
+                          <td className="py-2 pr-4 text-black/60">{formatDate(entry.lastScoreDate)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="rounded-md border border-black/10 bg-black/5 p-4 text-sm text-black/60">该房间暂无小队积分记录。</div>
+              )}
+            </CardContent>
+          </Card>
+
           <Card padded>
             <CardHeader>
               <CardTitle>个人统计</CardTitle>
@@ -273,50 +317,6 @@ export function StatsShell({ rooms, initialRoomId, initialStats }: StatsShellPro
                 <div className="rounded-md border border-black/10 bg-black/5 p-4 text-sm text-black/60">
                   你尚未加入该房间的小队，加入后可查看小队积分与连胜情况。
                 </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card padded>
-            <CardHeader>
-              <CardTitle>小队排行榜</CardTitle>
-              <CardDescription>按累计积分排序，便于观察整体竞争情况。</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {stats.scoreboard.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-sm">
-                    <thead>
-                      <tr className="text-left text-xs uppercase tracking-wide text-black/50">
-                        <th className="py-2 pr-4">排名</th>
-                        <th className="py-2 pr-4">小队</th>
-                        <th className="py-2 pr-4">成员</th>
-                        <th className="py-2 pr-4">总积分</th>
-                        <th className="py-2 pr-4">近 7 天</th>
-                        <th className="py-2 pr-4">最近得分日</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {stats.scoreboard.map((entry, index) => (
-                        <tr key={entry.teamId} className="border-t border-black/5 text-black/70">
-                          <td className="py-2 pr-4 font-medium text-black">#{index + 1}</td>
-                          <td className="py-2 pr-4">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-black/80">{entry.teamName}</span>
-                              {entry.isUserTeam ? <Badge variant="success">我的队伍</Badge> : null}
-                            </div>
-                          </td>
-                          <td className="py-2 pr-4">{entry.memberCount} 人</td>
-                          <td className="py-2 pr-4 font-semibold text-black">{entry.totalPoints}</td>
-                          <td className="py-2 pr-4">{entry.pointsLast7Days}</td>
-                          <td className="py-2 pr-4 text-black/60">{formatDate(entry.lastScoreDate)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="rounded-md border border-black/10 bg-black/5 p-4 text-sm text-black/60">该房间暂无小队积分记录。</div>
               )}
             </CardContent>
           </Card>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { loginSchema } from "@/lib/validation";
 import { Button } from "@/components/ui/Button";
@@ -10,6 +10,13 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [values, setValues] = useState({ username: "", password: "" });
+  const redirectRef = useRef("/checkin");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    redirectRef.current = params.get("redirect") ?? "/checkin";
+  }, []);
 
   const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -38,7 +45,7 @@ export default function LoginPage() {
           return;
         }
 
-        window.location.href = "/rooms";
+        window.location.href = redirectRef.current;
       } catch {
         setError("无法连接服务器，请稍后再试");
       }
