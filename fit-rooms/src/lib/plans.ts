@@ -39,9 +39,10 @@ function normalizeDetails(details: unknown | undefined): Json | null | undefined
 }
 
 function buildLockInstant(planDate: string, timezone: string) {
-  const startOfDay = new Date(new Date(`${planDate}T00:00:00`).toLocaleString("en-US", { timeZone: timezone }));
-  startOfDay.setHours(10, 0, 0, 0);
-  return startOfDay;
+  const base = new Date(`${planDate}T10:00:00`);
+  const zoned = new Date(base.toLocaleString("en-US", { timeZone: timezone }));
+  const offset = zoned.getTime() - base.getTime();
+  return new Date(base.getTime() - offset);
 }
 
 async function fetchUserTimezone(userId: string) {
