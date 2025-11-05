@@ -72,7 +72,13 @@ export function MemberList({ room, members, currentUserId }: MemberListProps) {
           <h2 className="text-xl font-semibold">房间成员</h2>
           <p className="text-sm text-black/60">总人数：{members.length}</p>
         </div>
-        <Badge variant="info">房主：{room.owner_id}</Badge>
+        <Badge variant="info">
+          房主：
+          {(() => {
+            const owner = members.find((member) => member.user_id === room.owner_id);
+            return owner?.users?.display_name ?? owner?.users?.username ?? room.owner_id;
+          })()}
+        </Badge>
       </div>
 
       {errorMessage ? <p className="mt-3 text-sm text-red-600">{errorMessage}</p> : null}
