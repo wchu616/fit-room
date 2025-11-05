@@ -284,7 +284,8 @@ export async function getRoomWithMembers({ roomId, userId }: { roomId: string; u
     .order("joined_at", { ascending: true });
 
   if (membersError) {
-    throw new Error("获取成员列表失败");
+    console.error("getRoomWithMembers: 获取成员列表失败", membersError);
+    throw new Error(`获取成员列表失败: ${membersError.message ?? "未知错误"}`);
   }
 
   const normalizedMembers: RoomMemberWithUser[] = (members ?? []).map((member) => {
