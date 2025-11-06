@@ -58,7 +58,7 @@
   }
 
   .app-input {
-    @apply flex h-10 items-center rounded-md border border-black/10 bg-white shadow-sm transition focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500 focus-within:ring-offset-1;
+    @apply flex h-10 items-center rounded-md border border-black/10 bg-white text-black shadow-sm transition focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500 focus-within:ring-offset-1;
   }
 
   .app-card {
