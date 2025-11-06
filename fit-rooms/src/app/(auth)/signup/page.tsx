@@ -16,6 +16,8 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [values, setValues] = useState({ username: "", password: "", confirmPassword: "", timezone: "Asia/Shanghai" });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -72,22 +74,44 @@ export default function SignupPage() {
             onChange={(event) => setValues((prev) => ({ ...prev, username: event.target.value }))}
             required
           />
-          <Input
-            name="password"
-            type="password"
-            placeholder="密码"
-            value={values.password}
-            onChange={(event) => setValues((prev) => ({ ...prev, password: event.target.value }))}
-            required
-          />
-          <Input
-            name="confirmPassword"
-            type="password"
-            placeholder="确认密码"
-            value={values.confirmPassword}
-            onChange={(event) => setValues((prev) => ({ ...prev, confirmPassword: event.target.value }))}
-            required
-          />
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Input
+                name="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="密码"
+                value={values.password}
+                onChange={(event) => setValues((prev) => ({ ...prev, password: event.target.value }))}
+                required
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowPassword((prev) => !prev)}
+              >
+                {showPassword ? "隐藏" : "显示"}
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                name="confirmPassword"
+                type={showConfirmPassword ? "text" : "password"}
+                placeholder="确认密码"
+                value={values.confirmPassword}
+                onChange={(event) => setValues((prev) => ({ ...prev, confirmPassword: event.target.value }))}
+                required
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowConfirmPassword((prev) => !prev)}
+              >
+                {showConfirmPassword ? "隐藏" : "显示"}
+              </Button>
+            </div>
+          </div>
           <div className="space-y-1">
             <label className="text-sm text-black/60" htmlFor="timezone">
               时区
