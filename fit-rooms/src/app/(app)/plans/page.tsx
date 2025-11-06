@@ -155,12 +155,80 @@ function formatOverrideTimestamp(override: PlanOverride) {
   return `${override.for_date} 10:00`;
 }
 
-type PlanFormValues = {
+type RecurrenceMode = "none" | "weekly" | "dailyInterval" | "custom";
+
+type PlanFormState = {
+  title: string;
+  startDate: string;
+  endDate: string;
+  recurrenceMode: RecurrenceMode;
+  weeklyDays: string[];
+  interval: number;
+  customRrule: string;
+};
+
+type PlanFormSubmit = {
   title: string;
   startDate: string;
   endDate: string;
   rrule: string;
 };
+
+const WEEKDAY_OPTIONS = [
+  { code: "MO", label: "周一" },
+  { code: "TU", label: "周二" },
+  { code: "WE", label: "周三" },
+  { code: "TH", label: "周四" },
+  { code: "FR", label: "周五" },
+  { code: "SA", label: "周六" },
+  { code: "SU", label: "周日" },
+];
+
+function parseRruleToFormState(rrule: string): Pick<PlanFormState, "recurrenceMode" | "weeklyDays" | "interval" | "customRrule"> {
+  const normalized = rrule.trim();
+  if (!normalized) {
+    return { recurrenceMode: "none", weeklyDays: [], interval: 1, customRrule: "" };
+  }
+  const upper = normalized.toUpperCase();
+  if (upper.startsWith("FREQ=WEEKLY")) {
+    const match = upper.match(/BYDAY=([^;]+)/);
+    const days = match ? match[1].split(",").map((day) => day.trim()).filter(Boolean) : [];
+    return { recurrenceMode: "weekly", weeklyDays: days, interval: 1, customRrule: "" };
+  }
+  if (upper.startsWith("FREQ=DAILY")) {
+    const match = upper.match(/INTERVAL=(\d+)/);
+    const interval = match ? Math.max(1, parseInt(match[1], 10) || 1) : 1;
+    return { recurrenceMode: "dailyInterval", weeklyDays: [], interval, customRrule: "" };
+  }
+  return { recurrenceMode: "custom", weeklyDays: [], interval: 1, customRrule: normalized };
+}
+
+function buildRruleFromState(state: PlanFormState): { rrule: string; error?: string } {
+  switch (state.recurrenceMode) {
+    case "none":
+      return { rrule: "" };
+    case "weekly": {
+      if (state.weeklyDays.length === 0) {
+        return { rrule: "", error: "请选择至少一个重复日" };
+      }
+      const uniqueDays = Array.from(new Set(state.weeklyDays));
+      return { rrule: `FREQ=WEEKLY;BYDAY=${uniqueDays.join(",")}` };
+    }
+    case "dailyInterval": {
+      const interval = Math.max(1, Math.floor(state.interval) || 1);
+      return interval === 1 ? { rrule: "FREQ=DAILY" } : { rrule: `FREQ=DAILY;INTERVAL=${interval}` };
+    }
+    case "custom": {
+      const trimmed = state.customRrule.trim();
+      if (!trimmed) {
+        return { rrule: "", error: "请输入自定义重复规则" };
+      }
+      return { rrule: trimmed };
+    }
+    default:
+      return { rrule: "" };
+  }
+}
 
 export default function PlansPage() {
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -223,6 +291,20 @@ export default function PlansPage() {
 
   const selectedPlans = plansByDate.get(selectedDate) ?? [];
 
+  const editInitialState = useMemo(() => {
+    if (!editState) return null;
+    const recurrence = parseRruleToFormState(extractRrule(editState.plan.details));
+    return {
+      title: editState.plan.title,
+      startDate: editState.plan.start_date,
+      endDate: editState.plan.end_date ?? "",
+      recurrenceMode: recurrence.recurrenceMode,
+      weeklyDays: recurrence.weeklyDays,
+      interval: recurrence.interval,
+      customRrule: recurrence.customRrule,
+    } satisfies PlanFormState;
+  }, [editState]);
+
   function isLockedForDate(dateKey: string) {
     const lockInstant = buildLockInstant(dateKey);
     return new Date() >= lockInstant;
@@ -237,7 +319,7 @@ export default function PlansPage() {
     return fallback;
   }
 
-  async function handleCreateSubmit(values: PlanFormValues) {
+  async function handleCreateSubmit(values: PlanFormSubmit) {
     const body = {
       title: values.title.trim(),
       start_date: values.startDate,
@@ -259,7 +341,7 @@ export default function PlansPage() {
     await fetchPlans();
   }
 
-  async function handleUpdateSubmit(values: PlanFormValues, override?: PlanOverrideInput) {
+  async function handleUpdateSubmit(values: PlanFormSubmit, override?: PlanOverrideInput) {
     if (!editState) return;
 
     const body: Record<string, unknown> = {
@@ -475,7 +557,15 @@ export default function PlansPage() {
           mode="create"
           open={createOpen}
           locked={false}
-          initialValues={{ title: "", startDate: selectedDate, endDate: "", rrule: "" }}
+          initialState={{
+            title: "",
+            startDate: selectedDate,
+            endDate: "",
+            recurrenceMode: "none",
+            weeklyDays: [],
+            interval: 1,
+            customRrule: "",
+          }}
           onClose={() => setCreateOpen(false)}
           onSubmit={async (values) => {
             await handleCreateSubmit(values);
@@ -484,18 +574,13 @@ export default function PlansPage() {
         />
       ) : null}
 
-      {editState ? (
+      {editState && editInitialState ? (
         <PlanFormDialog
           mode="edit"
           open={Boolean(editState)}
           locked={isLockedForDate(editState.dateKey)}
           overrideReason={editState.override}
-          initialValues={{
-            title: editState.plan.title,
-            startDate: editState.plan.start_date,
-            endDate: editState.plan.end_date ?? "",
-            rrule: extractRrule(editState.plan.details),
-          }}
+          initialState={editInitialState}
           onClose={() => setEditState(null)}
           onSubmit={async (values) => {
             await handleUpdateSubmit(values, editState.override);
@@ -534,26 +619,57 @@ interface PlanFormDialogProps {
   mode: "create" | "edit";
   open: boolean;
   locked: boolean;
-  initialValues: PlanFormValues;
+  initialState: PlanFormState;
   overrideReason?: PlanOverrideInput;
   onClose: () => void;
-  onSubmit: (values: PlanFormValues) => Promise<void>;
+  onSubmit: (values: PlanFormSubmit) => Promise<void>;
 }
 
-function PlanFormDialog({ mode, open, locked, initialValues, overrideReason, onClose, onSubmit }: PlanFormDialogProps) {
-  const [values, setValues] = useState<PlanFormValues>(initialValues);
+function PlanFormDialog({ mode, open, locked, initialState, overrideReason, onClose, onSubmit }: PlanFormDialogProps) {
+  const [values, setValues] = useState<PlanFormState>(initialState);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
-      setValues(initialValues);
+      setValues(initialState);
       setError(null);
       setSubmitting(false);
     }
-  }, [initialValues, open]);
+  }, [initialState, open]);
 
   const canEdit = !locked || Boolean(overrideReason);
+
+  const handleRecurrenceModeChange = (mode: RecurrenceMode) => {
+    setValues((prev: PlanFormState) => {
+      if (mode === "weekly") {
+        const dayOrder = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+        const startDayIndex = new Date(prev.startDate).getDay();
+        const defaultDay = dayOrder[startDayIndex] ?? "MO";
+        const nextDays = prev.weeklyDays.length > 0 ? prev.weeklyDays : [defaultDay];
+        return { ...prev, recurrenceMode: mode, weeklyDays: nextDays };
+      }
+      if (mode === "dailyInterval") {
+        return { ...prev, recurrenceMode: mode, interval: prev.interval && prev.interval >= 1 ? prev.interval : 1 };
+      }
+      return { ...prev, recurrenceMode: mode };
+    });
+  };
+
+  const toggleWeeklyDay = (code: string) => {
+    setValues((prev: PlanFormState) => {
+      const exists = prev.weeklyDays.includes(code);
+      const nextDays = exists
+        ? prev.weeklyDays.filter((day) => day !== code)
+        : [...prev.weeklyDays, code];
+      const sorted = nextDays
+        .slice()
+        .sort(
+          (a, b) => WEEKDAY_OPTIONS.findIndex((opt) => opt.code === a) - WEEKDAY_OPTIONS.findIndex((opt) => opt.code === b)
+        );
+      return { ...prev, weeklyDays: sorted };
+    });
+  };
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -564,7 +680,18 @@ function PlanFormDialog({ mode, open, locked, initialValues, overrideReason, onC
     setSubmitting(true);
     setError(null);
     try {
-      await onSubmit(values);
+      const { rrule, error: recurrenceError } = buildRruleFromState(values);
+      if (recurrenceError) {
+        setError(recurrenceError);
+        setSubmitting(false);
+        return;
+      }
+      await onSubmit({
+        title: values.title,
+        startDate: values.startDate,
+        endDate: values.endDate,
+        rrule,
+      });
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "提交失败");
@@ -592,7 +719,7 @@ function PlanFormDialog({ mode, open, locked, initialValues, overrideReason, onC
               type="text"
               required
               value={values.title}
-              onChange={(event) => setValues((prev) => ({ ...prev, title: event.target.value }))}
+              onChange={(event) => setValues((prev: PlanFormState) => ({ ...prev, title: event.target.value }))}
               className="mt-1 w-full rounded border border-black/20 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none"
               disabled={submitting || !canEdit}
             />
@@ -604,7 +731,7 @@ function PlanFormDialog({ mode, open, locked, initialValues, overrideReason, onC
                 type="date"
                 required
                 value={values.startDate}
-                onChange={(event) => setValues((prev) => ({ ...prev, startDate: event.target.value }))}
+                onChange={(event) => setValues((prev: PlanFormState) => ({ ...prev, startDate: event.target.value }))}
                 className="mt-1 w-full rounded border border-black/20 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none"
                 disabled={submitting || !canEdit}
               />
@@ -614,24 +741,92 @@ function PlanFormDialog({ mode, open, locked, initialValues, overrideReason, onC
               <input
                 type="date"
                 value={values.endDate}
-                onChange={(event) => setValues((prev) => ({ ...prev, endDate: event.target.value }))}
+                onChange={(event) => setValues((prev: PlanFormState) => ({ ...prev, endDate: event.target.value }))}
                 className="mt-1 w-full rounded border border-black/20 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none"
                 disabled={submitting || !canEdit}
                 min={values.startDate}
               />
             </label>
           </div>
-          <label className="block text-sm font-medium text-black/70">
-            RRULE（可选）
-            <input
-              type="text"
-              placeholder="例如：FREQ=DAILY"
-              value={values.rrule}
-              onChange={(event) => setValues((prev) => ({ ...prev, rrule: event.target.value }))}
-              className="mt-1 w-full rounded border border-black/20 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none"
-              disabled={submitting || !canEdit}
-            />
-          </label>
+          <div className="space-y-2">
+            <span className="block text-sm font-medium text-black/70">重复</span>
+            <div className="flex flex-wrap gap-2 text-sm">
+              {(
+                [
+                  { key: "none" as RecurrenceMode, label: "不重复" },
+                  { key: "weekly" as RecurrenceMode, label: "每周重复" },
+                  { key: "dailyInterval" as RecurrenceMode, label: "每 N 天重复" },
+                  { key: "custom" as RecurrenceMode, label: "自定义" },
+                ]
+              ).map((option) => {
+                const active = values.recurrenceMode === option.key;
+                return (
+                  <button
+                    key={option.key}
+                    type="button"
+                    className={`rounded-full border px-3 py-1 ${
+                      active ? "border-primary-500 bg-primary-50 text-primary-600" : "border-black/20 bg-white hover:border-primary-300"
+                    }`}
+                    onClick={() => handleRecurrenceModeChange(option.key)}
+                    disabled={submitting || !canEdit}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+            {values.recurrenceMode === "weekly" ? (
+              <div className="flex flex-wrap gap-2">
+                {WEEKDAY_OPTIONS.map((day) => {
+                  const active = values.weeklyDays.includes(day.code);
+                  return (
+                    <button
+                      key={day.code}
+                      type="button"
+                      className={`rounded-full border px-3 py-1 text-sm ${
+                        active ? "border-primary-500 bg-primary-50 text-primary-600" : "border-black/20 bg-white hover:border-primary-300"
+                      }`}
+                      onClick={() => toggleWeeklyDay(day.code)}
+                      disabled={submitting || !canEdit}
+                    >
+                      {day.label}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+            {values.recurrenceMode === "dailyInterval" ? (
+              <label className="flex items-center gap-2 text-sm text-black/70">
+                <span>每</span>
+                <input
+                  type="number"
+                  min={1}
+                  value={values.interval}
+                  onChange={(event) =>
+                    setValues((prev: PlanFormState) => ({ ...prev, interval: Number(event.target.value) || 1 }))
+                  }
+                  className="w-20 rounded border border-black/20 px-2 py-1 text-sm focus:border-primary-500 focus:outline-none"
+                  disabled={submitting || !canEdit}
+                />
+                <span>天重复</span>
+              </label>
+            ) : null}
+            {values.recurrenceMode === "custom" ? (
+              <label className="block text-sm font-medium text-black/70">
+                自定义 RRULE
+                <textarea
+                  placeholder="例如：FREQ=WEEKLY;BYDAY=MO,WE,FR"
+                  value={values.customRrule}
+                  onChange={(event) =>
+                    setValues((prev: PlanFormState) => ({ ...prev, customRrule: event.target.value }))
+                  }
+                  className="mt-1 w-full rounded border border-black/20 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none"
+                  rows={2}
+                  disabled={submitting || !canEdit}
+                />
+              </label>
+            ) : null}
+          </div>
         </div>
         {error ? <div className="mt-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
         <div className="mt-6 flex items-center justify-end gap-3">
