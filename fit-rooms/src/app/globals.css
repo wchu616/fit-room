@@ -84,3 +84,25 @@
     border-radius: 9999px;
   }
 }
+
+@layer utilities {
+  .text-black\/60 {
+    color: rgba(17, 24, 39, 0.78) !important;
+  }
+
+  .text-black\/50 {
+    color: rgba(17, 24, 39, 0.7) !important;
+  }
+
+  .text-black\/40 {
+    color: rgba(17, 24, 39, 0.62) !important;
+  }
+
+  .placeholder\:text-black\/40::placeholder {
+    color: rgba(17, 24, 39, 0.62) !important;
+  }
+
+  .placeholder\:text-black\/50::placeholder {
+    color: rgba(17, 24, 39, 0.7) !important;
+  }
+}
