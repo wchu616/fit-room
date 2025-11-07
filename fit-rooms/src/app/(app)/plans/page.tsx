@@ -485,10 +485,10 @@ export default function PlansPage() {
       <Card padded>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>{selectedDate}</span>
+            <span>当日计划{selectedDate}</span>
             <Badge variant="default">计划 {selectedPlans.length} 条</Badge>
           </CardTitle>
-          <CardDescription>点击日期查看当日计划，10:00 后可申请 override。</CardDescription>
+          <CardDescription>点击日期查看当日计划，10:00 后需申请 override。</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {selectedPlans.length === 0 ? (
@@ -737,7 +737,7 @@ function PlanFormDialog({ mode, open, locked, initialState, overrideReason, onCl
               />
             </label>
             <label className="block text-sm font-medium text-black/70">
-              结束日期（可选）
+              结束日期
               <input
                 type="date"
                 value={values.endDate}

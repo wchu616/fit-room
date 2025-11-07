@@ -27,8 +27,8 @@ function AppShell({ children }: { children: ReactNode }) {
       <Container className="flex-1 pb-12">{children}</Container>
       <footer className="border-t border-black/5 bg-white/80">
         <Container className="flex flex-col gap-2 py-4 text-xs text-black/50 sm:flex-row sm:items-center sm:justify-between">
-          <span>© {new Date().getFullYear()} Fit Rooms</span>
-          <span>坚持打卡，团队共进。</span>
+          <span>© IngI studio, all rights reserved</span>
+          <span>今日歌曲推荐：《烂歌》 - 黄子弘凡</span>
         </Container>
       </footer>
     </div>
