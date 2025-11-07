@@ -14,6 +14,7 @@ interface PlanOverride {
   for_date: string;
   created_at: string | null;
   user_id: string;
+  note: string | null;
 }
 
 interface Plan {
@@ -522,9 +523,14 @@ export default function PlansPage() {
                             <ul className="space-y-1 text-xs text-black/60">
                               {overrides.map((override) => (
                                 <li key={override.id} className="rounded bg-black/5 px-2 py-1">
-                                  <span className="font-medium">{formatOverrideLabel(override.reason)}</span>
-                                  <span className="ml-2">日期：{override.for_date}</span>
-                                  <span className="ml-2">记录时间：{formatOverrideTimestamp(override)}</span>
+                                  <div className="font-medium">{formatOverrideLabel(override.reason)}</div>
+                                  <div className="mt-1 text-xs text-black/60">
+                                    <span>日期：{override.for_date}</span>
+                                    <span className="ml-2">记录时间：{formatOverrideTimestamp(override)}</span>
+                                  </div>
+                                  {override.note ? (
+                                    <div className="mt-1 text-xs text-black/70">说明：{override.note}</div>
+                                  ) : null}
                                 </li>
                               ))}
                             </ul>
@@ -709,7 +715,15 @@ function PlanFormDialog({ mode, open, locked, initialState, overrideReason, onCl
         </p>
         {locked ? (
           <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
-            今日 10:00 后计划已锁定。{overrideReason ? `本次 override 原因：${formatOverrideLabel(overrideReason.reason)}。` : "请先申请 override 后再编辑。"}
+            今日 10:00 后计划已锁定。
+            {overrideReason ? (
+              <span>
+                本次 override 原因：{formatOverrideLabel(overrideReason.reason)}
+                {overrideReason.note ? <span>（说明：{overrideReason.note}）</span> : null}。
+              </span>
+            ) : (
+              "请先申请 override 后再编辑。"
+            )}
           </div>
         ) : null}
         <div className="mt-4 space-y-4">
@@ -844,9 +858,24 @@ function PlanFormDialog({ mode, open, locked, initialState, overrideReason, onCl
 
 function OverrideReasonDialog({ state, onClose, onConfirm }: { state: OverrideReasonState; onClose: () => void; onConfirm: (input: PlanOverrideInput) => void }) {
   const [reason, setReason] = useState<PlanOverrideInput["reason"]>("period");
+  const [note, setNote] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const handleReasonChange = (value: PlanOverrideInput["reason"]) => {
+    setReason(value);
+    setError(null);
+    if (value !== "other") {
+      setNote("");
+    }
+  };
 
   function handleConfirm() {
-    onConfirm({ reason, forDate: state.dateKey });
+    if (reason === "other" && !note.trim()) {
+      setError("选择“其他”时需要填写 override 说明");
+      return;
+    }
+    setError(null);
+    onConfirm({ reason, forDate: state.dateKey, note: reason === "other" ? note.trim() : undefined });
   }
 
   return (
@@ -862,10 +891,28 @@ function OverrideReasonDialog({ state, onClose, onConfirm }: { state: OverrideRe
           ].map((item) => (
             <label key={item.key} className={`flex cursor-pointer items-center justify-between rounded border p-3 ${reason === item.key ? "border-primary-500 bg-primary-50" : "border-black/10 hover:border-primary-300"}`}>
               <span>{item.label}</span>
-              <input type="radio" name="override-edit" value={item.key} checked={reason === item.key} onChange={() => setReason(item.key as PlanOverrideInput["reason"])} />
+              <input
+                type="radio"
+                name="override-edit"
+                value={item.key}
+                checked={reason === item.key}
+                onChange={() => handleReasonChange(item.key as PlanOverrideInput["reason"])}
+              />
             </label>
           ))}
         </div>
+        {reason === "other" ? (
+          <label className="mt-4 block text-sm text-black/70">
+            <span className="mb-1 block font-medium">说明</span>
+            <textarea
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              className="w-full rounded border border-black/20 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none"
+              rows={3}
+            />
+          </label>
+        ) : null}
+        {error ? <div className="mt-3 rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">{error}</div> : null}
         <div className="mt-6 flex items-center justify-end gap-3">
           <Button variant="secondary" onClick={onClose}>
             取消
@@ -879,17 +926,31 @@ function OverrideReasonDialog({ state, onClose, onConfirm }: { state: OverrideRe
 
 function DeleteOverrideDialog({ planId, dateKey, onClose, onSuccess }: { planId: string; dateKey: string; onClose: () => void; onSuccess: () => Promise<void> }) {
   const [reason, setReason] = useState<PlanOverrideInput["reason"]>("period");
+  const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const handleReasonChange = (value: PlanOverrideInput["reason"]) => {
+    setReason(value);
+    setError(null);
+    if (value !== "other") {
+      setNote("");
+    }
+  };
+
   async function handleSubmit() {
+    if (reason === "other" && !note.trim()) {
+      setError("选择“其他”时需要填写删除说明");
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
       const response = await fetch(`/api/plans/${planId}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ override: { reason, forDate: dateKey } }),
+        body: JSON.stringify({ override: { reason, forDate: dateKey, note: reason === "other" ? note.trim() : undefined } }),
       });
 
       if (response.status !== 204) {
@@ -921,10 +982,27 @@ function DeleteOverrideDialog({ planId, dateKey, onClose, onSuccess }: { planId:
           ].map((item) => (
             <label key={item.key} className={`flex cursor-pointer items-center justify-between rounded border p-3 ${reason === item.key ? "border-primary-500 bg-primary-50" : "border-black/10 hover:border-primary-300"}`}>
               <span>{item.label}</span>
-              <input type="radio" name="override-delete" value={item.key} checked={reason === item.key} onChange={() => setReason(item.key as PlanOverrideInput["reason"])} />
+              <input
+                type="radio"
+                name="override-delete"
+                value={item.key}
+                checked={reason === item.key}
+                onChange={() => handleReasonChange(item.key as PlanOverrideInput["reason"])}
+              />
             </label>
           ))}
         </div>
+        {reason === "other" ? (
+          <label className="mt-4 block text-sm text-black/70">
+            <span className="mb-1 block font-medium">说明</span>
+            <textarea
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              className="w-full rounded border border-black/20 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none"
+              rows={3}
+            />
+          </label>
+        ) : null}
         {error ? <div className="mt-3 rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">{error}</div> : null}
         <div className="mt-6 flex items-center justify-end gap-3">
           <Button variant="secondary" onClick={onClose} disabled={loading}>

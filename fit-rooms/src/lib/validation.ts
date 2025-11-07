@@ -42,10 +42,20 @@ export const updatePlanSchema = createPlanSchema
     path: ["end_date"],
   });
 
-export const planOverrideSchema = z.object({
-  reason: z.enum(["period", "weather", "other"]),
-  forDate: z.string().refine(isValidDateString, "日期格式应为 YYYY-MM-DD").optional(),
-});
+export const planOverrideSchema = z
+  .object({
+    reason: z.enum(["period", "weather", "other"]),
+    forDate: z.string().refine(isValidDateString, "日期格式应为 YYYY-MM-DD").optional(),
+    note: z
+      .string()
+      .trim()
+      .max(200, "override 说明不应超过 200 个字符")
+      .optional(),
+  })
+  .refine((data) => data.reason !== "other" || Boolean(data.note && data.note.trim().length > 0), {
+    message: "选择“其他”时需要填写 override 说明",
+    path: ["note"],
+  });
 
 export const createRoomSchema = z.object({
   name: z.string().trim().min(2, "房间名称至少 2 个字符").max(50, "房间名称最多 50 个字符"),

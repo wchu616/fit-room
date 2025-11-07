@@ -78,7 +78,7 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
       overrideReason: overridePayload?.success ? overridePayload.data : undefined,
     });
 
-    return NextResponse.json({ success: true }, { status: 204 });
+    return new NextResponse(null, { status: 204 });
   } catch (error) {
     if (error instanceof PlanNotFoundError) {
       return NextResponse.json({ error: error.message }, { status: 403 });

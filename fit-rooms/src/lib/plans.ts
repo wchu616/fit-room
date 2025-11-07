@@ -94,11 +94,13 @@ async function recordPlanOverride({
   userId,
   reason,
   forDate,
+  note,
 }: {
   planId: string;
   userId: string;
   reason: PlanOverrideInput["reason"];
   forDate: string;
+  note?: string;
 }) {
   const supabase = createSupabaseServiceRoleClient();
   const payload: PlanOverrideInsert = {
@@ -106,6 +108,7 @@ async function recordPlanOverride({
     user_id: userId,
     reason,
     for_date: forDate,
+    note: note && note.trim().length > 0 ? note.trim() : null,
   };
 
   const { error } = await supabase.from("plan_overrides").insert(payload);
@@ -130,7 +133,7 @@ export async function listPlansByUser({ userId }: { userId: string }): Promise<P
       end_date,
       created_at,
       updated_at,
-      plan_overrides ( id, reason, for_date, created_at, user_id )
+      plan_overrides ( id, reason, note, for_date, created_at, user_id )
     `
     )
     .eq("user_id", userId)
@@ -212,7 +215,13 @@ export async function updatePlan({
   }
 
   if (overrideReason) {
-    await recordPlanOverride({ planId, userId, reason: overrideReason.reason, forDate: overrideReason.forDate ?? plan.start_date });
+    await recordPlanOverride({
+      planId,
+      userId,
+      reason: overrideReason.reason,
+      forDate: overrideReason.forDate ?? plan.start_date,
+      note: overrideReason.note,
+    });
   }
 
   return data;
@@ -228,7 +237,13 @@ export async function deletePlan({ planId, userId, overrideReason }: { planId: s
   const supabase = createSupabaseServiceRoleClient();
 
   if (overrideReason) {
-    await recordPlanOverride({ planId, userId, reason: overrideReason.reason, forDate: overrideReason.forDate ?? plan.start_date });
+    await recordPlanOverride({
+      planId,
+      userId,
+      reason: overrideReason.reason,
+      forDate: overrideReason.forDate ?? plan.start_date,
+      note: overrideReason.note,
+    });
   }
 
   const { error } = await supabase.from("plans").delete().eq("id", planId);
@@ -249,5 +264,5 @@ export async function createPlanOverride({
 }) {
   const plan = await assertPlanOwnership({ planId, userId });
   const forDate = input.forDate ?? plan.start_date;
-  await recordPlanOverride({ planId, userId, reason: input.reason, forDate });
+  await recordPlanOverride({ planId, userId, reason: input.reason, forDate, note: input.note });
 }
