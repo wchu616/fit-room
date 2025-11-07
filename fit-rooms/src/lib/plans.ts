@@ -227,14 +227,14 @@ export async function deletePlan({ planId, userId, overrideReason }: { planId: s
 
   const supabase = createSupabaseServiceRoleClient();
 
+  if (overrideReason) {
+    await recordPlanOverride({ planId, userId, reason: overrideReason.reason, forDate: overrideReason.forDate ?? plan.start_date });
+  }
+
   const { error } = await supabase.from("plans").delete().eq("id", planId);
 
   if (error) {
     throw new Error(error.message ?? "删除计划失败");
-  }
-
-  if (overrideReason) {
-    await recordPlanOverride({ planId, userId, reason: overrideReason.reason, forDate: overrideReason.forDate ?? plan.start_date });
   }
 }
 
